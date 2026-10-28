@@ -211,16 +211,16 @@ body{background:var(--bg);color:var(--text);min-height:100vh;overflow:hidden}
 </div>
 
 <script>
-/* ========== КОНФИГ ========== */
-const SUPABASE_URL = 'ВСТАВЬ_СЮДА_PROJECT_URL';
-const SUPABASE_ANON_KEY = 'ВСТАВЬ_СЮДА_ANON_KEY';
-const ADMIN_EMAIL = 'твоя_почта@example.com'; // твоя почта — получишь права админа
+/* ========== КОНФИГ (УЖЕ ЗАПОЛНЕН) ========== */
+const SUPABASE_URL = 'https://rbmosvfrstupvtkpjptm.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_XeRKQIpdjNmXlxtnNJ1kBg_Uw2-NZX1';
+const ADMIN_EMAIL = 'levshlapa919@gmail.com';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ========== STATE ========== */
-let me = null;           // текущий профиль
-let myChats = [];        // список чатов
+let me = null;
+let myChats = [];
 let currentChatId = null;
 let currentChatType = null;
 let currentPartnerId = null;
@@ -268,7 +268,7 @@ async function initApp(){
   const {data:{session}}=await sb.auth.getSession();
   if(!session){return}
   const {data:profile}=await sb.from('profiles').select('*').eq('id',session.user.id).single();
-  if(!profile){alert('Профиль не найден');return}
+  if(!profile){alert('Профиль не найден. Убедись, что ты выполнил SQL-скрипт из инструкции.');return}
   
   // Назначаем админа по email
   if(session.user.email.toLowerCase()===ADMIN_EMAIL.toLowerCase() && profile.role!=='admin'){
@@ -289,14 +289,6 @@ async function initApp(){
   
   await loadChats();
   subscribePresence();
-  
-  // Обновляем статус "в сети"
-  setInterval(heartbeat, 15000);
-  heartbeat();
-}
-
-async function heartbeat(){
-  // обновляем last_seen через profiles.created_at не будем, просто держим в памяти onlineUsers
 }
 
 /* ========== CHATS LIST ========== */
@@ -337,7 +329,6 @@ async function getChatDisplayInfo(chat){
   if(chat.type==='group'){
     return {name:chat.name||'Группа', avatar:chat.avatar_url, statusText:'', partnerId:null};
   }
-  // личный чат — находим собеседника
   const {data:members}=await sb.from('chat_members').select('user_id').eq('chat_id',chat.id);
   const partnerId=(members||[]).map(m=>m.user_id).find(id=>id!==me.id);
   if(!partnerId)return {name:'Неизвестный',avatar:null,statusText:'',partnerId:null};
@@ -368,11 +359,10 @@ async function openChat(chatId, type, partnerId){
   document.getElementById('emptyMain').style.display='none';
   document.getElementById('chatView').style.display='flex';
   
-  // Проверка блокировки
   if(partnerId){
     const {data:blocked}=await sb.from('blocks').select('blocker_id').eq('blocker_id',me.id).eq('blocked_id',partnerId);
     if(blocked&&blocked.length>0){
-      alert('Этот пользователь заблокирован. Разблокируй его, чтобы продолжить общение.');
+      alert('Этот пользователь заблокирован.');
       return;
     }
   }
@@ -438,8 +428,6 @@ function subscribePresence(){
       renderChatList();
       if(currentChatId)updateChatHeaderStatus();
     })
-    .on('presence',{event:'join'},()=>{})
-    .on('presence',{event:'leave'},()=>{})
     .subscribe(async(status)=>{
       if(status==='SUBSCRIBED'){
         await presenceSub.track({online_at:new Date().toISOString(),user_id:me.id});
@@ -447,7 +435,7 @@ function subscribePresence(){
     });
 }
 
-async function updateChatHeaderStatus(){
+function updateChatHeaderStatus(){
   if(currentChatType!=='private'||!currentPartnerId)return;
   const isOnline=onlineUsers.has(currentPartnerId);
   const isTyping=typingUsers.has(currentPartnerId);
@@ -484,8 +472,6 @@ async function startPrivateChat(partnerId){
   if(error){alert(error.message);return}
   closeModal();
   await loadChats();
-  openChat(data,data?null:null,partnerId);
-  // Перезагрузим чат корректно
   const {data:chat}=await sb.from('chats').select('*').eq('id',data).single();
   if(chat)openChat(chat.id,chat.type,partnerId);
 }
@@ -550,10 +536,8 @@ document.addEventListener('click',()=>document.getElementById('chatMenu')?.class
 
 async function deleteCurrentChat(){
   if(!confirm('Удалить чат?'))return;
-  // Удаляем себя из участников
   await sb.from('chat_members').delete().eq('chat_id',currentChatId).eq('user_id',me.id);
   if(currentChatType==='group'){
-    // Если создатель — удаляем весь чат
     const {data:c}=await sb.from('chats').select('created_by').eq('id',currentChatId).single();
     if(c&&c.created_by===me.id){
       await sb.from('chats').delete().eq('id',currentChatId);
