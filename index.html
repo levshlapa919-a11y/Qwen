@@ -6,178 +6,293 @@
 <title>Golda Mesenger</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, sans-serif; }
-body { background: #0a0f0a; color: #fff; min-height: 100vh; }
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+:root { --bg: #0a0f0a; --surface: #111811; --border: #1a2a1a; --neon: #00ff88; --text: #fff; --text-sec: #6a8a6a; }
+body { background: var(--bg); color: var(--text); min-height: 100vh; }
 .auth-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
 .auth-box { width: 100%; max-width: 400px; }
 .logo { font-size: 48px; font-weight: 900; text-align: center; margin-bottom: 40px; letter-spacing: -2px; }
-.logo .diamond { color: #00ff88; display: inline-block; }
+.logo .diamond { color: var(--neon); }
 .input-group { margin-bottom: 16px; }
-.input-group input { width: 100%; padding: 16px 20px; background: #111811; border: 1px solid #1a2a1a; border-radius: 12px; color: #fff; font-size: 16px; outline: none; }
-.input-group input:focus { border-color: #00ff88; }
-.btn-primary { width: 100%; padding: 16px; background: #00ff88; color: #000; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px; }
-.btn-primary:active { opacity: 0.8; }
-.auth-switch { text-align: center; margin-top: 20px; color: #6a8a6a; font-size: 14px; }
-.auth-switch span { color: #00ff88; cursor: pointer; }
-.err { color: #ff3b5c; font-size: 13px; margin-bottom: 12px; text-align: center; background: rgba(255,59,92,0.1); padding: 12px; border-radius: 8px; display: none; }
+.input-group input { width: 100%; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; color: var(--text); font-size: 16px; outline: none; }
+.input-group input:focus { border-color: var(--neon); }
+.btn-primary { width: 100%; padding: 16px; background: var(--neon); color: #000; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; }
+.auth-switch { text-align: center; margin-top: 20px; color: var(--text-sec); }
+.auth-switch span { color: var(--neon); cursor: pointer; }
+.err { color: #ff3b5c; background: rgba(255,59,92,0.1); padding: 12px; border-radius: 8px; margin-bottom: 12px; text-align: center; display: none; }
+.app { display: none; height: 100vh; flex-direction: column; }
+.header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.header .logo { font-size: 32px; margin: 0; }
+.chat-list { flex: 1; overflow-y: auto; padding: 20px; }
+.chat-item { padding: 14px; background: var(--surface); border-radius: 12px; margin-bottom: 8px; cursor: pointer; }
+.chat-item:active { opacity: 0.8; }
+.avatar { width: 50px; height: 50px; border-radius: 50%; background: var(--surface); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; margin-right: 12px; float: left; }
+.avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.chat-name { font-weight: 600; margin-bottom: 4px; }
+.chat-last { color: var(--text-sec); font-size: 14px; }
+.chat-view { display: none; flex-direction: column; height: 100vh; }
+.chat-header { padding: 16px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; }
+.back-btn { margin-right: 12px; font-size: 24px; cursor: pointer; }
+.messages { flex: 1; overflow-y: auto; padding: 20px; }
+.msg { max-width: 80%; padding: 12px 16px; border-radius: 18px; margin-bottom: 8px; }
+.msg.me { background: var(--neon); color: #000; margin-left: auto; }
+.msg.other { background: var(--surface); }
+.msg-input { padding: 16px; background: var(--surface); border-top: 1px solid var(--border); display: flex; gap: 10px; }
+.msg-input input { flex: 1; padding: 14px; border-radius: 24px; border: 1px solid var(--border); background: var(--bg); color: var(--text); outline: none; }
+.msg-input button { width: 48px; height: 48px; border-radius: 50%; background: var(--neon); border: none; color: #000; font-size: 20px; cursor: pointer; }
 </style>
 </head>
 <body>
 
-<div class="auth-wrap">
+<div id="authScreen" class="auth-wrap">
   <div class="auth-box">
     <div class="logo">G<span class="diamond">◆</span>LDA</div>
     <div id="authErr" class="err"></div>
-    
     <div id="loginForm">
       <div class="input-group"><input type="email" id="loginEmail" placeholder="Email"></div>
       <div class="input-group"><input type="password" id="loginPass" placeholder="Пароль"></div>
-      <button class="btn-primary" id="loginBtn">Войти</button>
-      <div class="auth-switch">Нет аккаунта? <span id="toReg">Создать</span></div>
+      <button class="btn-primary" onclick="doLogin()">Войти</button>
+      <div class="auth-switch">Нет аккаунта? <span onclick="showRegister()">Создать</span></div>
     </div>
-    
     <div id="registerForm" style="display:none">
       <div class="input-group"><input type="email" id="regEmail" placeholder="Email"></div>
       <div class="input-group"><input type="password" id="regPass" placeholder="Пароль"></div>
       <div class="input-group"><input type="text" id="regUsername" placeholder="Юзернейм"></div>
       <div class="input-group"><input type="text" id="regName" placeholder="Имя"></div>
-      <button class="btn-primary" id="regBtn">Создать аккаунт</button>
-      <div class="auth-switch">Есть аккаунт? <span id="toLogin">Войти</span></div>
+      <button class="btn-primary" onclick="doRegister()">Создать</button>
+      <div class="auth-switch">Есть аккаунт? <span onclick="showLogin()">Войти</span></div>
     </div>
+  </div>
+</div>
+
+<div id="app" class="app">
+  <div class="header">
+    <div class="logo">G<span class="diamond">◆</span>LDA</div>
+    <button class="btn-primary" style="width:auto;padding:8px 16px" onclick="doLogout()">Выйти</button>
+  </div>
+  <div id="chatList" class="chat-list"></div>
+</div>
+
+<div id="chatView" class="chat-view">
+  <div class="chat-header">
+    <span class="back-btn" onclick="showChatList()">←</span>
+    <div class="avatar" id="chatAvatar"></div>
+    <div>
+      <div style="font-weight:600" id="chatName"></div>
+      <div style="font-size:12px;color:var(--text-sec)" id="chatStatus"></div>
+    </div>
+  </div>
+  <div id="messages" class="messages"></div>
+  <div class="msg-input">
+    <input type="text" id="msgInput" placeholder="Сообщение..." onkeypress="if(event.key==='Enter')sendMessage()">
+    <button onclick="sendMessage()">➤</button>
   </div>
 </div>
 
 <script>
 const SUPABASE_URL = 'https://rbmosvfrstupvtkpjptm.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_XeRKQIpdjNmXlxtnNJ1kBg_Uw2-NZX1';
-const ADMIN_EMAIL = 'levshlapa919@gmail.com';
-
-console.log('=== ИНИЦИАЛИЗАЦИЯ ===');
-console.log('URL:', SUPABASE_URL);
-console.log('Ключ:', SUPABASE_ANON_KEY.substring(0, 20) + '...');
-
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let me = null, currentChat = null, msgSub = null;
 
 function showErr(msg) { 
   const e = document.getElementById('authErr'); 
   e.textContent = msg; 
   e.style.display = 'block';
-  console.log('ОШИБКА:', msg);
+  setTimeout(() => e.style.display = 'none', 5000);
 }
-function hideErr() { document.getElementById('authErr').style.display = 'none'; }
 
-// Кнопка ВОЙТИ
-document.getElementById('loginBtn').addEventListener('click', async function() {
-  console.log('=== НАЖАТА КНОПКА ВОЙТИ ===');
-  hideErr();
-  
+function showRegister() { 
+  document.getElementById('loginForm').style.display = 'none'; 
+  document.getElementById('registerForm').style.display = 'block'; 
+}
+
+function showLogin() { 
+  document.getElementById('registerForm').style.display = 'none'; 
+  document.getElementById('loginForm').style.display = 'block'; 
+}
+
+async function doLogin() {
   const email = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPass').value;
+  if (!email || !pass) return showErr('Заполни все поля');
   
-  console.log('Email:', email);
-  console.log('Пароль:', pass ? '***' : '(пусто)');
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) return showErr(error.message);
   
-  if (!email || !pass) {
-    showErr('Заполни все поля');
-    return;
-  }
-  
-  console.log('Вызов signInWithPassword...');
-  
-  try {
-    const { data, error } = await sb.auth.signInWithPassword({ 
-      email: email, 
-      password: pass 
-    });
-    
-    if (error) {
-      console.error('Ошибка авторизации:', error);
-      showErr(error.message);
-      return;
-    }
-    
-    console.log('Успешный вход!', data);
-    showErr('');
-    alert('Вход выполнен! Переход в приложение...');
-    
-    // Здесь будет переход в приложение
-    // await initApp();
-    
-  } catch (err) {
-    console.error('Исключение:', err);
-    showErr('Неожиданная ошибка: ' + err.message);
-  }
-});
+  await initApp();
+}
 
-// Кнопка СОЗДАТЬ
-document.getElementById('regBtn').addEventListener('click', async function() {
-  console.log('=== НАЖАТА КНОПКА СОЗДАТЬ ===');
-  hideErr();
-  
+async function doRegister() {
   const email = document.getElementById('regEmail').value.trim();
   const pass = document.getElementById('regPass').value;
-  const username = document.getElementById('regUsername').value.trim().toLowerCase();
+  const username = document.getElementById('regUsername').value.trim();
   const name = document.getElementById('regName').value.trim();
   
-  if (!email || !pass || !username) {
-    showErr('Заполни все поля');
-    return;
-  }
+  if (!email || !pass || !username) return showErr('Заполни все поля');
   
-  if (pass.length < 6) {
-    showErr('Пароль мин. 6 символов');
-    return;
-  }
+  const { data, error } = await sb.auth.signUp({ 
+    email, password: pass,
+    options: { data: { username, display_name: name } }
+  });
   
-  if (!/^[a-z0-9_]{3,20}$/.test(username)) {
-    showErr('Юзернейм: 3-20 символов (a-z, 0-9, _)');
-    return;
-  }
+  if (error) return showErr(error.message);
+  if (!data.session) return showErr('Отключи подтверждение email в Supabase');
   
-  console.log('Регистрация:', email, username);
+  await initApp();
+}
+
+async function initApp() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
   
-  try {
-    const { data, error } = await sb.auth.signUp({ 
-      email: email, 
-      password: pass, 
-      options: { data: { username: username, display_name: name || username } } 
+  // Создаем профиль если нет
+  let { data: profile } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+  if (!profile) {
+    await sb.from('profiles').insert({
+      id: session.user.id,
+      username: session.user.user_metadata.username || 'user',
+      display_name: session.user.user_metadata.display_name || 'User'
     });
-    
-    if (error) {
-      console.error('Ошибка регистрации:', error);
-      showErr(error.message);
-      return;
-    }
-    
-    console.log('Регистрация успешна!', data);
-    
-    if (!data.session) {
-      showErr('Проверь почту или отключи подтверждение в Supabase');
-      return;
-    }
-    
-    alert('Аккаунт создан!');
-    
-  } catch (err) {
-    console.error('Исключение:', err);
-    showErr('Неожиданная ошибка: ' + err.message);
+    profile = { username: 'user', display_name: 'User' };
   }
-});
+  
+  me = profile;
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  
+  loadChats();
+}
 
-// Переключение форм
-document.getElementById('toReg').addEventListener('click', function() {
-  document.getElementById('loginForm').style.display = 'none';
-  document.getElementById('registerForm').style.display = 'block';
-  hideErr();
-});
+async function loadChats() {
+  const list = document.getElementById('chatList');
+  list.innerHTML = '<div style="text-align:center;color:var(--text-sec);margin-top:40px">Загрузка...</div>';
+  
+  // Получаем чаты
+  const { data: members } = await sb.from('chat_members')
+    .select('chat_id, chat:chats(id,type,name)')
+    .eq('user_id', me.id);
+  
+  const chats = (members || []).map(m => m.chat).filter(Boolean);
+  
+  if (chats.length === 0) {
+    list.innerHTML = '<div style="text-align:center;color:var(--text-sec);margin-top:40px">Нет чатов. Создай новый!</div>';
+    return;
+  }
+  
+  list.innerHTML = '';
+  for (const chat of chats) {
+    const div = document.createElement('div');
+    div.className = 'chat-item';
+    div.onclick = () => openChat(chat);
+    
+    let name = chat.name || 'Чат';
+    if (chat.type === 'private') {
+      const { data: members } = await sb.from('chat_members')
+        .select('user_id, profile:profiles(display_name)')
+        .eq('chat_id', chat.id);
+      const other = members?.find(m => m.user_id !== me.id);
+      if (other?.profile) name = other.profile.display_name;
+    }
+    
+    div.innerHTML = `
+      <div class="avatar">${name[0].toUpperCase()}</div>
+      <div class="chat-name">${name}</div>
+      <div class="chat-last">Нажми чтобы открыть</div>
+    `;
+    list.appendChild(div);
+  }
+}
 
-document.getElementById('toLogin').addEventListener('click', function() {
-  document.getElementById('registerForm').style.display = 'none';
-  document.getElementById('loginForm').style.display = 'block';
-  hideErr();
-});
+async function openChat(chat) {
+  currentChat = chat;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('chatView').style.display = 'flex';
+  
+  let name = chat.name || 'Чат';
+  if (chat.type === 'private') {
+    const { data: members } = await sb.from('chat_members')
+      .select('user_id, profile:profiles(display_name)')
+      .eq('chat_id', chat.id);
+    const other = members?.find(m => m.user_id !== me.id);
+    if (other?.profile) name = other.profile.display_name;
+  }
+  
+  document.getElementById('chatName').textContent = name;
+  document.getElementById('chatAvatar').textContent = name[0].toUpperCase();
+  
+  loadMessages();
+}
 
-console.log('=== СКРИПТ ЗАГРУЖЕН ===');
+async function loadMessages() {
+  const box = document.getElementById('messages');
+  box.innerHTML = '';
+  
+  const { data } = await sb.from('messages')
+    .select('*')
+    .eq('chat_id', currentChat.id)
+    .order('created_at', { ascending: true });
+  
+  (data || []).forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'msg ' + (m.sender_id === me.id ? 'me' : 'other');
+    div.textContent = m.content;
+    box.appendChild(div);
+  });
+  
+  box.scrollTop = box.scrollHeight;
+  
+  // Подписка на новые сообщения
+  if (msgSub) msgSub.unsubscribe();
+  msgSub = sb.channel('chat_' + currentChat.id)
+    .on('postgres_changes', { 
+      event: 'INSERT', 
+      schema: 'public', 
+      table: 'messages',
+      filter: `chat_id=eq.${currentChat.id}`
+    }, payload => {
+      const m = payload.new;
+      const div = document.createElement('div');
+      div.className = 'msg ' + (m.sender_id === me.id ? 'me' : 'other');
+      div.textContent = m.content;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    })
+    .subscribe();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('msgInput');
+  const content = input.value.trim();
+  if (!content || !currentChat) return;
+  
+  await sb.from('messages').insert({
+    chat_id: currentChat.id,
+    sender_id: me.id,
+    content: content
+  });
+  
+  input.value = '';
+}
+
+function showChatList() {
+  document.getElementById('chatView').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  if (msgSub) msgSub.unsubscribe();
+  loadChats();
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  location.reload();
+}
+
+// Проверяем сессию при загрузке
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) await initApp();
+})();
 </script>
 </body>
 </html>
